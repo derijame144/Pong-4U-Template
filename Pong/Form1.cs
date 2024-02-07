@@ -16,6 +16,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Threading;
 using System.Media;
+using System.Security.Cryptography;
 
 #endregion
 
@@ -25,8 +26,21 @@ namespace Pong
     {
         #region global values
 
+        Random rng = new Random();
+        int random;
+
+        Image mushroom = Properties.Resources.mushroom;
+        Rectangle shroom = new Rectangle(1000000, 1000000, 50, 50);
+        bool mushr00m = false;
+
+        Boolean bpUp = true;
+        Boolean rpUp = false;
+        Boolean portal = false;
+
         //graphics objects for drawing
         SolidBrush whiteBrush = new SolidBrush(Color.White);
+        SolidBrush redBrush = new SolidBrush(Color.Red);
+        SolidBrush blueBrush = new SolidBrush(Color.Blue);
         Font drawFont = new Font("Courier New", 10);
 
         // Sounds for game
@@ -42,22 +56,22 @@ namespace Pong
         //ball values
         Boolean ballMoveRight = true;
         Boolean ballMoveDown = true;
-        const int BALL_SPEED = 4;
+        int BALL_SPEED = 4;
         const int BALL_WIDTH = 20;
-        const int BALL_HEIGHT = 20; 
+        const int BALL_HEIGHT = 20;
         Rectangle ball;
 
         //player values
-        const int PADDLE_SPEED = 4;
+        const int PADDLE_SPEED = 20;
         const int PADDLE_EDGE = 20;  // buffer distance between screen edge and paddle            
         const int PADDLE_WIDTH = 10;
-        const int PADDLE_HEIGHT = 40;
-        Rectangle player1, player2;
+        const int PADDLE_HEIGHT = 60;
+        Rectangle player1, player2, bPortal, rPortal;
 
         //player and game scores
         int player1Score = 0;
         int player2Score = 0;
-        int gameWinScore = 2;  // number of points needed to win game
+        int gameWinScore = 5;  // number of points needed to win game
 
         #endregion
 
@@ -98,7 +112,7 @@ namespace Pong
                     break;
             }
         }
-        
+
         private void Form1_KeyUp(object sender, KeyEventArgs e)
         {
             //check to see if a key has been released and set its KeyDown value to false if it has
@@ -124,7 +138,7 @@ namespace Pong
         /// </summary>
         private void SetParameters()
         {
-            if (newGameOk)
+            if (newGameOk == true)
             {
                 player1Score = player2Score = 0;
                 newGameOk = false;
@@ -132,12 +146,19 @@ namespace Pong
                 gameUpdateLoop.Start();
             }
 
+
+            bPortal = new Rectangle(this.Width / 2 + 100, this.Height / 2, PADDLE_WIDTH, 130);
+            rPortal = new Rectangle(this.Width / 2- 100, this.Height / 2, PADDLE_WIDTH, 130);
+
+            player1ScoreLabel.Text = $"{player1Score}";
+            player2ScoreLabel.Text = $"{player2Score}";
+
             //player start positions
             player1 = new Rectangle(PADDLE_EDGE, this.Height / 2 - PADDLE_HEIGHT / 2, PADDLE_WIDTH, PADDLE_HEIGHT);
             player2 = new Rectangle(this.Width - PADDLE_EDGE - PADDLE_WIDTH, this.Height / 2 - PADDLE_HEIGHT / 2, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-            // TODO create a ball rectangle in the middle of screen
-
+            BALL_SPEED = 4;
+            ball = new Rectangle(this.Width / 2 - 100, this.Height / 2 - 100, 100, 100);
         }
 
         /// <summary>
@@ -148,24 +169,67 @@ namespace Pong
         {
             #region update ball position
 
-            // TODO create code to move ball either left or right based on ballMoveRight and using BALL_SPEED
 
-            // TODO create code move ball either down or up based on ballMoveDown and using BALL_SPEED
+            if (ballMoveRight == true)
+            {
+                ball.X = ball.X + BALL_SPEED;
+            }
+            else
+            {
+                ball.X = ball.X - BALL_SPEED;
+            }
 
+            if (ballMoveDown == true)
+            {
+                ball.Y = ball.Y + BALL_SPEED;
+            }
+            else
+            {
+                ball.Y = ball.Y - BALL_SPEED;
+            }
             #endregion
 
             #region update paddle positions
 
             if (wKeyDown == true && player1.Y > 0)
             {
-                // TODO create code to move player 1 up
+                player1.Y -= PADDLE_SPEED;
             }
 
-            // TODO create an if statement and code to move player 1 down 
+            if (player1.Y < 0)
+            {
+                player1.Y = 0;
+            }
 
-            // TODO create an if statement and code to move player 2 up
+            if (sKeyDown == true && player1.Y + player1.Height < this.Height)
+            {
+                player1.Y += PADDLE_SPEED;
+            }
 
-            // TODO create an if statement and code to move player 2 down
+            if (player1.Y + player1.Height > this.Height)
+            {
+                player1.Y = this.Height - player1.Height;
+            }
+
+            if (upKeyDown == true && player2.Y > 0)
+            {
+                player2.Y -= PADDLE_SPEED;
+            }
+
+            if (player2.Y < 0)
+            {
+                player2.Y = 0;
+            }
+
+            if (downKeyDown == true && player2.Y + player2.Height < this.Height)
+            {
+                player2.Y += PADDLE_SPEED;
+            }
+
+            if (player2.Y + player2.Height > this.Height)
+            {
+                player2.Y = this.Height - player2.Height;
+            }
 
             #endregion
 
@@ -173,24 +237,87 @@ namespace Pong
 
             if (ball.Y < 0) // if ball hits top line
             {
-                // TODO use ballMoveDown boolean to change direction
+                ball.Y = 0;
+                ballMoveDown = true;
                 // TODO play a collision sound
             }
-            // TODO In an else if statement check for collision with bottom line
-            // If true use ballMoveDown boolean to change direction
+
+            if (ball.Y + ball.Height > this.Height)
+            {
+                ball.Y = this.Height - ball.Height;
+                ballMoveDown = false;
+                // TODO play a collision sound
+            }
+
 
             #endregion
 
             #region ball collision with paddles
 
             // TODO create if statment that checks if player1 collides with ball and if it does
-                 // --- play a "paddle hit" sound and
-                 // --- use ballMoveRight boolean to change direction
+            // --- play a "paddle hit" sound and
+            if (ball.IntersectsWith(player1))
+            {
+
+                random = rng.Next(1, 4);
+
+                if (random == 1 && mushr00m == false)
+                {
+                    mushr00m = true;
+                    shroom.X = this.Width / 2 - shroom.Width;
+                    shroom.Y = rng.Next(1, this.Height - shroom.Height);
+                }
+
+                ball.X = player1.X + player1.Width;
+                ballMoveRight = true;
+
+                if (BALL_SPEED < 10)
+                {
+                    BALL_SPEED += 2;
+                }
+
+                ball.Height -= 20;
+                ball.Width -= 20;
+
+                if (ball.Width <= 0)
+                {
+                    ball.Width = 5;
+                    ball.Height = 5;
+                }
+            }
+
 
             // TODO create if statment that checks if player2 collides with ball and if it does
-                // --- play a "paddle hit" sound and
-                // --- use ballMoveRight boolean to change direction
-            
+            // --- play a "paddle hit" sound and
+            if (ball.IntersectsWith(player2))
+            {
+                random = rng.Next(1, 4);
+
+                if (random == 1 && mushr00m == false) 
+                {
+                    mushr00m = true;
+                    shroom.X = this.Width / 2 - shroom.Width;
+                    shroom.Y = rng.Next(1, this.Height - shroom.Height);
+                }
+
+                ball.X = player2.X - ball.Width;
+                ballMoveRight = false;
+
+                if (BALL_SPEED < 10)
+                {
+                    BALL_SPEED += 2;
+                }
+
+                ball.Height -= 20;
+                ball.Width -= 20;
+
+                if (ball.Width <= 0)
+                {
+                    ball.Width = 5;
+                    ball.Height = 5;
+                }
+            }
+
             /*  ENRICHMENT
              *  Instead of using two if statments as noted above see if you can create one
              *  if statement with multiple conditions to play a sound and change direction
@@ -202,23 +329,145 @@ namespace Pong
 
             if (ball.X < 0)  // ball hits left wall logic
             {
-                // TODO
-                // --- play score sound
-                // --- update player 2 score and display it to the label
+                if (ball.Y >= player1.Y && ball.Y <= player1.Y + PADDLE_HEIGHT)
+                {
+                    ballMoveRight = true;
+                    BALL_SPEED += 2;
+                }
 
-                // TODO use if statement to check to see if player 2 has won the game. If true run 
-                // GameOver() method. Else change direction of ball and call SetParameters() method.
+                else
+                {
+                    player2Score += 1;
+
+                    if (player2Score == gameWinScore)
+                    {
+                        GameOver("player2");
+                    }
+
+                    else
+                    {
+                        SetParameters();
+                    }
+
+                }
 
             }
 
-            // TODO same as above but this time check for collision with the right wall
+            if (ball.X + ball.Width > this.Width)  // ball hits right wall logic
+            {
+                if (ball.Y >= player2.Y && ball.Y <= player2.Y + PADDLE_HEIGHT)
+                {
+                    ballMoveRight = false;
+                    BALL_SPEED += 2;
+                }
+
+                else
+                {
+                    player1Score += 1;
+
+                    if (player1Score == gameWinScore)
+                    {
+                        GameOver("player1");
+                    }
+                    else
+                    {
+                        SetParameters();
+                    }
+                }
+            }
 
             #endregion
-            
+
+            if (mushr00m == true && ball.IntersectsWith(shroom))
+            {
+                if (ballMoveRight == true)
+                {
+                    player1.Height += 10;
+                }
+                else
+                {
+                    player2.Height += 10;
+                }
+
+                mushr00m = false;
+
+            }
+
+            if (ball.Width == 5)
+            {
+                #region blue portal
+                if (bpUp == true)
+                {
+                    bPortal.Y -= 5;
+                }
+
+                else
+                {
+                    bPortal.Y += 5;
+                }
+
+                if (bPortal.Y <= 0)
+                {
+                    bpUp = false;
+                }
+
+                if (bPortal.Y + bPortal.Height >= this.Height)
+                {
+                    bpUp = true;
+                }
+
+                #endregion
+
+                #region red portal
+                if (rpUp == true)
+                {
+                    rPortal.Y -= 5;
+                }
+
+                else
+                {
+                    rPortal.Y += 5;
+                }
+
+                if (rPortal.Y <= 0)
+                {
+                    rpUp = false;
+                }
+
+                if (rPortal.Y + bPortal.Height >= this.Height)
+                {
+                    rpUp = true;
+                }
+
+                #endregion
+
+                #region portal phys
+                if (ball.IntersectsWith(bPortal) && portal == false)
+                {
+                    ball.Y = rPortal.Y + 65;
+                    ball.X = rPortal.X;
+                    portal = true;
+                }
+
+                else if (ball.IntersectsWith(rPortal) && portal == false)
+                {
+                    ball.Y = bPortal.Y + 65;
+                    ball.X = bPortal.X;
+                    portal = true;
+                }
+
+                else
+                {
+                    portal = false;
+                }
+
+                #endregion
+            }
+
             //refresh the screen, which causes the Form1_Paint method to run
             this.Refresh();
         }
-        
+
         /// <summary>
         /// Displays a message for the winner when the game is over and allows the user to either select
         /// to play again or end the program
@@ -227,7 +476,10 @@ namespace Pong
         private void GameOver(string winner)
         {
             newGameOk = true;
-
+            startLabel.Text = $"{winner} wins\npress space to play again";
+            startLabel.Visible = true;
+            gameUpdateLoop.Stop();
+            this.Refresh();
             // TODO create game over logic
             // --- stop the gameUpdateLoop
             // --- show a message on the startLabel to indicate a winner, (may need to Refresh).
@@ -237,10 +489,24 @@ namespace Pong
 
         private void Form1_Paint(object sender, PaintEventArgs e)
         {
-            // TODO draw player2 using FillRectangle
-            e.Graphics.FillRectangle(whiteBrush, player1);
+            if (newGameOk == false)
+            {
+                e.Graphics.FillRectangle(whiteBrush, player1);
+                e.Graphics.FillRectangle(whiteBrush, player2);
+                e.Graphics.FillRectangle(whiteBrush, ball);
 
-            // TODO draw ball using FillRectangle
+                if (mushr00m == true)
+                {
+                    e.Graphics.DrawImage(mushroom, shroom);
+                }
+
+                if (ball.Width == 5)
+                {
+                    e.Graphics.FillRectangle(redBrush, rPortal);
+                    e.Graphics.FillRectangle(blueBrush, bPortal);
+                }
+
+            }
 
         }
 
